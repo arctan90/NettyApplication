@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package seeplant.protobuf;
+
+option csharp_namespace = "Google.Protobuf.WellKnownTypes";
+option java_package = "com.seeplant.protobuf";
+option java_outer_classname = "ProtoMsg";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "GPB";
+//新定义接口的时候，先新建立一个message，然后在Protocol中添加这个message的实例
+message Protocol{
+	Login login = 1;
+	Bye bye = 3;
+	Ping ping = 4;
+};
+
+enum MsgType{
+	LOGIN = 0;
+	BYE = 1;
+	PING = 2;
+};
+ 
+message Login {
+  uint32 msgType = 1;
+  string userType = 2;
+  int64 uid = 3;
+  string userName = 4;
+  string password = 5;
+};
+
+
+message Bye {
+  MsgType msgType = 1;
+  string userType = 2;
+  int64 uid = 3;
+};
+
+message Ping {
+	MsgType msgType = 1;
+	string userType = 2;
+	int64 uid = 3;
+};
+

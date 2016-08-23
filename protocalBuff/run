@@ -1,0 +1,2 @@
+rm -rf ./com/
+./protoc --java_out=./ any.proto
