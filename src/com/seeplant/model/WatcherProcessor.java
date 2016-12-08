@@ -21,6 +21,8 @@ public class WatcherProcessor {
             result = Version.getInfo();
         } else if (mString.equals("usage") || mString.equals("help")) {
             result = help;
+        } else if (mString.equals("list")) {
+            
         }
         return result;
     }

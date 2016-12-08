@@ -9,12 +9,11 @@ public class Property {
     private static Properties properties = new Properties();
     private static boolean needAuthority = false;
     static {
-        File file = new File(System.getProperty("user.dir")+"setting.properties");
-        if (!file.exists())
-        {
+        File file = new File(System.getProperty("user.dir")+"/setting.properties");
+        if (!file.exists()) {
             file = new File(Property.class.getResource("/").getPath()+"setting.properties");
         }
-         
+        
         try (FileInputStream fis = 
                 new FileInputStream(file)){
             properties.load(fis);

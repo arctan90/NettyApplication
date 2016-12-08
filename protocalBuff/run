@@ -1,2 +1,2 @@
 rm -rf ./com/
-./protoc --java_out=./ any.proto
+./protoc --java_out=./ iris.proto
