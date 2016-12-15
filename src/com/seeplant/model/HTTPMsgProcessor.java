@@ -9,9 +9,15 @@ import java.util.List;
 
 import org.seeplant.myjson.JSONObject;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.irisking.IKAServer;
+import com.irisking.protobuf.FeatureBack;
+import com.irisking.protobuf.FeatureBack.Builder;
+import com.irisking.protobuf.FeatureExtract;
+import com.irisking.protobuf.IrisData;
 import com.seeplant.bean.IndexMap;
-import com.seeplant.protobuf.Bye;
+import com.seeplant.bean.JNICloudIrisInfo;
 import com.seeplant.util.MyLogger;
 import com.seeplant.util.Version;
 
@@ -26,29 +32,42 @@ public class HTTPMsgProcessor {
     public HTTPMsgProcessor() {
         
     }
+    public byte[] process (String uri, ByteBuf request) throws Exception{
+        byte[] result  = null ;
+        if (request == null) {
+            return result;
+        }
+        switch (uri) {
+            case "/api/describImage":
+                result = describImage(request);
+                break;
+            case "/api/idenByImage":
+                result = idenByImage(request);
+            default:
+                break;
+        }
+        return result;
+    }
     
-    public JSONObject process (String uri, ByteBuf request) throws Exception{
+    public JSONObject process (String uri, String request) throws Exception{
         JSONObject result = null;
         if (request == null) {
             return result;
         }
         switch (uri) {
             case "/feature/add": // 完成
-                result = addFeature(request.toString());
+                result = addFeature(request);
                 break;
             case "/feature/del": // 完成
-                result = delFeature(request.toString());
+                result = delFeature(request);
                 break;
             case "/feature/match":
-                result = matchOne(request.toString());
+                result = matchOne(request);
                 break;
             case "/feature/idel": // 完成
-                result = matchMore(request.toString());
+                result = matchMore(request);
                 break;
-            case "/feature/describImage":
-                result = describImage(request);
-                break;
-            case "/api/getSystemInfo":
+            case "/feature/getSystemInfo":
                 result = getSysInfo();
                 break;
             case "":
@@ -235,18 +254,68 @@ public class HTTPMsgProcessor {
     
     /**
      * 用图像抽特征
+     * @param request 输入的 FeatureExtract对应的byte流
+     * @return
+     * @throws InvalidProtocolBufferException 
+     */
+    private byte[] describImage(ByteBuf request) throws InvalidProtocolBufferException {
+        if (request == null) {
+            return null;
+        }
+        int length = request.writerIndex() - request.readerIndex();
+        byte[] featureExtractBytes = new byte[length]; // 传入的Byte数据, 是irisCloud的结构体对应的pritoBuff
+        request.getBytes(request.readerIndex(), featureExtractBytes);
+        
+        FeatureExtract featureExtract =FeatureExtract.parseFrom(featureExtractBytes);
+        boolean jniResult = false;
+        
+        IrisData data = featureExtract.getData();
+        int appId = featureExtract.getAppId();
+        int orgId = featureExtract.getOrgId();
+        
+        if (featureExtract != null && data != null) {
+            //搞个简单的类转化一下传过去
+            JNICloudIrisInfo irisInfo = new JNICloudIrisInfo(data);
+            jniResult = server.extractFromImg(irisInfo); //JNI抽数据
+            data = irisInfo.parseAsIrisData();
+        }
+
+        Builder result = FeatureBack.newBuilder();
+        if (jniResult == false || data == null) {
+            result.setCode(-1).setMsg("抽取失败").setAppId(-1).setOrgId(-1);
+        } else {
+            result.setCode(2).setMsg("OK").setData(data).setAppId(appId).setOrgId(orgId);
+        }
+        return result.build().toByteArray();
+    }
+
+    /**
+     * 用图像来识别
+     * @param request
      * @return
      */
-    private JSONObject describImage(ByteBuf request) {
+    private byte[] idenByImage(ByteBuf request) {
+        if (request == null) {
+            return null;
+        }
         int length = request.writerIndex() - request.readerIndex();
-        byte[] bytes = new byte[length]; // 传入的Byte数据
-        request.getBytes(request.readerIndex(), bytes);
-        System.out.println(new String(bytes));
+        byte[] inputBytes = new byte[length]; // 传入的Byte数据
+        request.getBytes(request.readerIndex(), inputBytes);
         
-        Bye bye = Bye.parseFrom(bytes);
         
-        JSONObject result = new JSONObject();
-        return result;
+        
+        long matchResult = server.idel(inputBytes, app_id, eyeMode);
+        
+        if (matchResult < 0) {
+            code = (int)matchResult;
+            msg = "识别失败";
+        } else {
+            code = 0;
+            msg = "OK";
+            resultIndex = matchResult;
+            String open_id = IndexMap.getInstance().findOpenIdByIndex(resultIndex, app_id, eyeMode);
+            result.put("open_id", open_id);
+        }
     }
     
     /**

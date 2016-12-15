@@ -1,4 +1,7 @@
 package com.irisking;
+
+import com.seeplant.bean.JNICloudIrisInfo;
+
 /**
  * 按接口文档《云平台算法服务接口》定义
  * 编译路径 /Users/yuantao/Project/playground/com/irisking/IKAServer.java
@@ -72,4 +75,11 @@ public class IKAServer {
      * @return 特征对应的索引数组
      */
     public native Long[] loadFeature(byte[] feature, int eytMode, int featureCount);
+    
+    /**
+     * 用图像抽特征，传入JNICloudIrisInfo对象，让C++自己组织格式调算法
+     * @param data
+     * @return 解析成功，失败
+     */
+    public native boolean extractFromImg(JNICloudIrisInfo data);
 }

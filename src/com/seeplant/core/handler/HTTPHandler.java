@@ -18,8 +18,6 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
 
-import java.net.URL;
-
 import org.seeplant.myjson.JSONObject;
 
 import com.seeplant.model.HTTPMsgProcessor;
@@ -31,7 +29,7 @@ public class HTTPHandler extends SimpleChannelInboundHandler<FullHttpRequest>{
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
         //消息体
         ByteBuf buff = request.content();
-        
+
         String mString = buff.toString(CharsetUtil.UTF_8);
 
         //uri
@@ -43,37 +41,49 @@ public class HTTPHandler extends SimpleChannelInboundHandler<FullHttpRequest>{
             return;
         }
         int position = uri.indexOf("?");
-        JSONObject jResponse = null;
+        boolean keepAlive = HttpHeaders.isKeepAlive(request);
         
         if (position < 0) {
-        
+            sendResponse(ctx, new JSONObject().put("code", -1).put("msg", "啊，网络吓瘫痪了"), keepAlive);
+            return;
         } else {
             String uriNoParam = uri.substring(0, position);
-        
+            JSONObject jResponse = null;
         //headers
 //        HttpHeaders headers = request.headers();
 //        List<Map.Entry<String, String>> entries = headers.entries();
 //        for (Entry<String, String> entry : entries) {
 //            System.out.println(entry.getKey()+":"+entry.getValue());
 //        }
-        
-            try {
-                jResponse = new HTTPMsgProcessor().process(uriNoParam, buff);
-            } catch (Exception e) {
-                // TODO: handle exception
+            //分类 api的返回byte[] feature的返回json
+            if (uriNoParam.indexOf("api/") > 0) {
+                try {
+                    byte[] data = new HTTPMsgProcessor().process(uriNoParam, buff);
+                    sendResponse(ctx, data, keepAlive);
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
+            } else if (uriNoParam.indexOf("feature/") > 0) {
+                try {
+                    jResponse = new HTTPMsgProcessor().process(uriNoParam, mString);
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
+                if (jResponse == null) {
+                    jResponse = new JSONObject().put("code", -1).put("msg", "啊，网络吓瘫痪了");
+                }
+                sendResponse(ctx, jResponse, keepAlive);
+            } else {
+                if (jResponse == null) {
+                    jResponse = new JSONObject().put("code", -1).put("msg", "啊，网络吓瘫痪了");
+                }
+                sendResponse(ctx, jResponse, keepAlive);
             }
         }
-        if (jResponse == null) {
-            jResponse = new JSONObject().put("code", -1).put("msg", "啊，网络吓瘫痪了");
-        }
-        
-        boolean keepAlive = HttpHeaders.isKeepAlive(request);
-        sendJsonResponse(ctx, jResponse, keepAlive);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        cause.printStackTrace();
         MyLogger.log(cause.getMessage());
         ctx.close();
     }
@@ -83,11 +93,27 @@ public class HTTPHandler extends SimpleChannelInboundHandler<FullHttpRequest>{
 //        ctx.fireChannelUnregistered();
 //    }
     
-    private void sendJsonResponse(ChannelHandlerContext ctx, JSONObject msg, boolean isKeepAlive) {
+    private void sendResponse(ChannelHandlerContext ctx, JSONObject msg, boolean isKeepAlive) {
         FullHttpResponse response = 
                 new DefaultFullHttpResponse(HTTP_1_1, 
                         OK, 
                         Unpooled.wrappedBuffer(msg.toString().getBytes()));
+        response.headers().set(CONTENT_TYPE, "application/json");
+        response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
+         
+        if (!isKeepAlive) {
+            ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+        } else {
+            response.headers().set(CONNECTION, Values.KEEP_ALIVE);
+            ctx.writeAndFlush(response);
+        }
+    }
+    
+    private void sendResponse(ChannelHandlerContext ctx, byte[] msg, boolean isKeepAlive) {
+        FullHttpResponse response = 
+                new DefaultFullHttpResponse(HTTP_1_1, 
+                        OK, 
+                        Unpooled.wrappedBuffer(msg));
         response.headers().set(CONTENT_TYPE, "application/json");
         response.headers().set(CONTENT_LENGTH, response.content().readableBytes());
          

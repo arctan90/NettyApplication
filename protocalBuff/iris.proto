@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package irisking.protobuf;
+
+option csharp_namespace = "Google.Protobuf.WellKnownTypes";
+option java_package = "com.irisking.protobuf";
+option java_outer_classname = "ProtoMsg";
+option java_multiple_files = true;
+option java_generate_equals_and_hash = true;
+option objc_class_prefix = "GPB";
+//新定义接口的时候，先新建立一个message，然后在Protocol中添加这个message的实例
+//图像抽特征的请求
+message FeatureExtract{
+  uint32 appId = 1;
+  uint32 orgId = 2;
+  IrisData data = 3;
+};
+//图像抽特征的应答
+message FeatureBack{
+  uint32 code = 1;
+  string msg = 2;
+  uint32 appId = 3;
+  uint32 orgId = 4;
+  IrisData data = 5;
+};
+//图像识别的请求
+message IdenByImg{
+  uint32 appId = 1;
+  uint32 orgId = 2;
+  IrisData data = 3;
+};
+//图像识别的应答
+message IdenByImgBack{
+  uint32 code = 1;
+  string msg = 2;
+  uint32 appId = 3;
+  uint32 orgId = 4;
+  string openId = 5;
+};
+//特征结构体
+message IrisData{
+  uint32 imgHight = 1;
+  uint32 imgWidth = 2;
+  uint32 imgType = 3;
+  uint32 irisRow = 4;
+  uint32 irisCol = 5;
+  uint32 irisRadius = 6;
+  uint32 focusScore = 7;
+  uint32 percentVisible = 8;
+  uint32 saturation = 9;
+  uint32 interlaceValue = 10;
+  uint32 qualityScore = 11;
+  uint32 jpegImSize = 12;
+  bytes imgData = 13;
+  bytes unknowInfo = 14;
+  bytes irisEnrTemplate = 15;
+  bytes irisRecTemplate = 16; 
+}; 
